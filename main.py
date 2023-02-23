@@ -7,6 +7,7 @@ import random
 import sys
 import pandas as pd
 import random
+from copy import deepcopy
 
 
 class Window(QMainWindow):
@@ -18,7 +19,10 @@ class Window(QMainWindow):
 
         self.setGeometry(100, 100, 1000, 500)
 
-        self.cards = pd.read_excel('cards.xlsx')
+        with open('cards.txt', 'r') as f:
+            self.cards = f.readlines()
+            for i in range(len(self.cards)):
+                self.cards[i] = self.cards[i].rstrip()
 
         self.UiComponents()
 
@@ -82,14 +86,19 @@ class Window(QMainWindow):
         self.setCentralWidget(menu)
 
     def start_action(self):
+        with open('cards.txt', 'r') as f:
+            self.cards = f.readlines()
+            for i in range(len(self.cards)):
+                self.cards[i] = self.cards[i].rstrip()
         self.need_save = 0
         self.centralWidget().deleteLater()
         self.layout = QFormLayout()
-        card_num = list(self.cards['Number'])
-        status = list(self.cards['Status'])
+        card_num = self.cards[1::3]
+        status = self.cards[2::3]
         i=0
         groupBox = QGroupBox()
-        for col in list(self.cards['Title']):
+        for col in self.cards[::3]:
+            col = col.rstrip()
             but1 = QPushButton(col)
             but1.setMinimumHeight(30)
             widg = QWidget()
@@ -99,7 +108,8 @@ class Window(QMainWindow):
             widg.setLayout(widg_l)
             self.layout.addRow(but1)
             self.layout.addRow(widg)
-            but1.clicked.connect(lambda: self.start_game(col))
+            print(deepcopy(col))
+            but1.clicked.connect(lambda: self.start_game(deepcopy(but1.sender().text())))
             i+=1
         groupBox.setLayout(self.layout)
         scroll = QScrollArea()
@@ -118,6 +128,7 @@ class Window(QMainWindow):
     def start_game(self, name):
         self.need_save = 1
         self.name = name
+        print(name)
         self.centralWidget().deleteLater()
         with open("Quizlets/" + name + '.txt', 'r') as f:
             data = f.read()
@@ -303,6 +314,40 @@ class Window(QMainWindow):
         with open('Quizlets/'+self.name+'.txt', 'w') as f:
             f.write(res_str)
 
+        with open('cards.txt', 'r') as f:
+            k = f.readlines()
+            for i in range(len(k)):
+                k[i] = k[i].rstrip()
+        cards = k[::3]
+        print(cards)
+        if self.name in cards:
+            print('true')
+            print(self.name)
+            ind = cards.index(self.name)
+            print(ind)
+            k[1+3*ind] = len(self.progress)
+            i=0
+            for g in self.progress:
+                if g == 5:
+                    i+=1
+            k[3*ind+2] = i/k[3*ind+1]
+        else:
+            print('false')
+            print(self.name)
+            k.append(self.name)
+            k.append(len(self.progress))
+            i=0
+            for g in self.progress:
+                if g == 5:
+                    i+=1
+            k.append(i/len(self.progress))
+        string=''
+        for name in k:
+            string += str(name) + '\n'
+        with open('cards.txt', 'w') as f:
+            f.write(string)
+
+
     def create_action(self):
         self.centralWidget().deleteLater()
         total = QWidget()
@@ -341,7 +386,7 @@ class Window(QMainWindow):
         total.setLayout(total_lay)
         self.setCentralWidget(total)
         self.k=0
-        self.add_boxes(3)
+        self.add_boxes(4)
 
     def add_boxes(self, i):
         for _ in range(i):
@@ -362,13 +407,14 @@ class Window(QMainWindow):
         self.progress = []
         self.answers = []
         i=0
-        for k in self.findChildren(QTextEdit):
+        for k in self.findChildren(QTextEdit)[2:]:
             if i%2 == 0:
                 self.words.append(k.toPlainText())
                 self.progress.append(0)
             else:
                 self.answers.append(k.toPlainText())
             i+=1
+
 
         self.name = self.title_new.toPlainText()
         self.save_results()
